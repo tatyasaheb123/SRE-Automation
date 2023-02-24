@@ -1,0 +1,26 @@
+apiVersion: apps/v1
+kind: ReplicaSet
+metadata: 
+  name: mymonitorapp-rs
+
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: "monitorapp"
+      DC: "IN"
+      env: "prod"
+
+  template: 
+    metadata:
+      name: "mypod1"
+      labels:
+        app: "monitorapp"
+        DC: "IN"
+        env: "prod"
+    spec: 
+      containers:
+        - name: monitorapp
+          image: vimal13/grafana
+
+
