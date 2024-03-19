@@ -1,0 +1,338 @@
+<#	
+	
+	.DESCRIPTION
+		A description of the file.
+#>
+
+function Send-EMail ($fromaddress, $toAddresses, $subject, $htmlContent)
+{
+	# Sending E-Mail 
+	$smtpServer = "google.com"
+	
+	$body = "<HTML><HEAD><META http-equiv=""Content-Type"" content=""text/html; charset=iso-8859-1"" /><TITLE></TITLE>"
+	$body += "<BODY bgcolor=""#FFFFFF"" style="" font-size:Small; font-family: Calibri; color: #000000""><P>"
+	$body += "<style>
+.tabs {
+  position: relative;   
+  min-height: 200px;
+  clear: both;
+  margin: 25px 0;
+}
+.tab {
+  float: left;
+}
+.tab label {
+  background: #eee; 
+  padding: 10px; 
+  border: 1px solid #ccc; 
+  margin-left: -1px; 
+  position: relative;
+  left: 1px; 
+}
+.tab [type=radio] {
+  display: none;   
+}
+.content {
+  position: absolute;
+  top: 28px;
+  left: 0;
+  background: white;
+  right: 0;
+  bottom: 0;
+  padding: 20px;
+  border: 1px solid #ccc; 
+}
+[type=radio]:checked ~ label {
+  background: white;
+  border-bottom: 1px solid white;
+  z-index: 2;
+}
+[type=radio]:checked ~ label ~ .content {
+  z-index: 1;
+}
+</style>"
+	$body += "</HEAD>"
+	
+	$body += "System HealthCheck,<br/><br/><br/>"
+	
+	$body += $htmlContent
+	
+	$messageSubject = $subject
+	
+	
+	#$SMTPClient = New-Object Net.Mail.SmtpClient($smtpServer, 25) 
+	#$SMTPClient.Credentials = New-Object System.Net.NetworkCredential("##", "##"); 
+	#$message = New-Object Net.Mail.MailMessage($fromaddress, $toaddress, $messageSubject, $body)
+	#$message.IsBodyHtml = $true;
+	#$message.Attachments.Add($attach)
+	#$SMTPClient.Send($message)
+	
+	$message = new-object System.Net.Mail.MailMessage
+	$message.From = $fromaddress
+	#$toaddress = $AlertEMail
+	#$message.To.Add($toaddress)
+	foreach ($toaddress in $toAddresses.Split(';'))
+	{
+		if ($toaddress -ne $null -and $toaddress -ne '')
+		{
+			$message.To.Add($toaddress)
+		}
+	}
+	$message.IsBodyHtml = $True
+	$message.Subject = $messageSubject
+	
+	
+	$body += "<br/><br/><br/> Thank you!! <br/><br/> PS - This is an automated email from the system.</p>"
+	$message.body = $body
+	$smtp = new-object Net.Mail.SmtpClient($smtpserver)
+	$smtp.Send($message)
+	$smtp.Dispose()
+}
+
+
+# file name: report_SRE_ServerMonitoring_v1.1.ps1 
+
+<# script modules
+
+- do.smod.sys.buildlist
+- do.smod.sys.GetCredDomain
+- do.smod.sys.GetCredObj
+- do.smod.net.TestDNS
+- do.smod.net.TLS
+
+#>
+
+# - vars
+[system.collections.arraylist]$results=@()
+
+# - inherited vars
+try { $srvList = $OctopusParameters["Servers"] }
+catch {}
+
+# Set the warning and critical thresholds for each metric
+$ping_warning_threshold = 200 # ms
+$ping_critical_threshold = 500 # ms
+
+# - build lists
+[array]$srvScope = $null
+[array]$srvScope = DO-SysBuildList $srvList
+
+if ([boolean]$srvScope) {
+    
+    if ($results.Count -gt 0 ) {$results.Clear()}
+    foreach ($srv in $srvScope) {
+        
+        # [string]$srv = 'QF0DSVW-WFTGT01'
+
+        $dnsHost = DO-NetTestDNS -DNS $srv 
+        $credStr = DO-SysGetCredDomain -DNSName $dnsHost.HostName 
+        $credPwd = $(Get-Variable "$credStr" -ValueOnly) 
+        $credObj = DO-SysGetCredObject -UserID $scrUserID -Password $credPwd -DNSName $dnsHost.HostName 
+
+        # - local tests
+        # - ping
+        
+        try {
+        
+            $ping = (Test-Connection -ComputerName $dnsHost.HostName -ErrorAction SilentlyContinue -Count 1).ResponseTime 
+
+            "(*) Server: " + $srv + " - Collecting data "  | Write-Output
+            if (($ping -ge $ping_warning_threshold)-and ($ping -le $ping_critical_threshold)) { $pingStatus = "WARNING" }
+            elseif ($ping -ge $ping_critical_threshold) { $pingStatus = "CRITICAL" } 
+            else { $pingStatus = "HEALTHY" }
+        }
+        
+        catch { 
+                '(!) ' + $env:COMPUTERNAME + ' : Unable to capture Test Connection data' | Write-Warning
+                $ping = "ERROR"
+                $pingStatus = "ERROR"
+            }
+        # - remote tests 
+        $srvResult = $null
+        $srvResult = Invoke-Command -ComputerName $dnsHost.HostName -Credential $credObj -ErrorAction SilentlyContinue -ScriptBlock {
+            # Set the warning and critical thresholds for each metric
+            $ping_warning_threshold = 200 # ms
+            $ping_critical_threshold = 500 # ms
+            $uptime_warning_threshold = 10 # days
+            $uptime_critical_threshold = 05 # days
+            # $cpu_percentage_Threshold = 01 #
+            $cpu_warning_threshold = 90 # %
+            $cpu_critical_threshold = 96 # %
+            # $memory_percentage_Threshold = 80
+            $memory_warning_threshold = 90 # %
+            $memory_critical_threshold = 96 # %
+            $disk_warning_threshold = 20 # %
+            $disk_critical_threshold = 10 # %
+            $swap_warning_threshold = 90 # %
+            $swap_critical_threshold = 96 # %
+            $load_warning_threshold = 5 # Number of CPUs
+            $load_critical_threshold = 8 # Number of CPUs
+            # $disk_warning_threshold = 20 # %
+            # $disk_critical_threshold = 10 # %
+
+            # - uptime
+            try {
+                # "(*) Server: " + $env:COMPUTERNAME + " - Uptime"  | write-host
+                $uptime_hours = (Get-Date) - (gcim Win32_OperatingSystem).LastBootUpTime | Select-Object -ExpandProperty TotalHours
+                if (($uptime_hours -le $uptime_warning_threshold) -and ($uptime_hours -ge $uptime_critical_threshold )) { $UptimeStatus = "WARNING" }
+                elseif ($uptime_hours -le $uptime_critical_threshold) { $UptimeStatus = "CRITICAL" } 
+                else { $UptimeStatus = "HEALTHY" }
+            }
+            catch { 
+                '(!) ' + $env:COMPUTERNAME + ' : Unable to capture uptime data' | Write-Warning
+                $uptime_hours = "ERROR"
+                $UptimeStatus = "ERROR"
+            }
+
+            # - cpu usage
+            try {
+                # "(*) Server: " + $env:COMPUTERNAME + " - CPU Usage"  | write-host
+                $cpuUsage = (Get-WmiObject Win32_Processor | Measure-Object -property LoadPercentage -Average).Average
+                if (($cpuUsage -ge $cpu_warning_threshold)-and ($cpuUsage -le $cpu_critical_threshold)) { $cpuStatus = "WARNING" } 
+                elseif ($cpuUsage -ge $cpu_critical_threshold) {
+            $cpuStatus = "CRITICAL"
+                } 
+
+        else {
+            $cpuStatus = "HEALTHY"
+            }
+            }
+            catch {
+                '(!) ' + $env:COMPUTERNAME + ' : Unable to capture CPU usage data' | Write-Warning
+                $cpuUsage = 'ERROR'
+                $cpuStatus = 'ERROR'
+            }
+
+
+            # - memory usage
+            try {
+                # "(*) Server: " + $env:COMPUTERNAME + " - Memory Usage"  | write-host
+                $Total_Physical_memory = (Get-WmiObject -Class Win32_OperatingSystem ).TotalVisibleMemorySize	
+                $Total_Free_Physical_memory = (Get-WmiObject -Class Win32_OperatingSystem ).FreePhysicalMemory    
+                $Used_Physical_memory_Percent = (($Total_Physical_memory - $Total_Free_Physical_memory) / $Total_Physical_memory) * 100
+                            
+                if (($Used_Physical_memory_Percent -gt $memory_warning_threshold)-and($Used_Physical_memory_Percent -le $memory_critical_threshold)) { $memoryStatus = "WARNING" }
+                elseif ($Used_Physical_memory_Percent -ge $memory_critical_threshold) { $memoryStatus = "CRITICAL" } 
+                else { $memoryStatus = "HEALTHY" }
+            }
+            catch {
+                 '(!) ' + $env:COMPUTERNAME + ' : Unable to capture memory usage data' | Write-Warning
+                 $Used_Physical_memory_Percent = 'ERROR'
+                 $memoryStatus = 'ERROR'
+            }
+
+            # - disk usage
+            try {
+                # "(*) Server: " + $env:COMPUTERNAME + " - Disk Usage"  | write-host
+                $total_disk_space = Get-WmiObject -Class Win32_LogicalDisk | Where-Object {$_.DriveType -eq 3} | Select-Object -ExpandProperty Size
+                $free_disk_space = Get-WmiObject -Class Win32_LogicalDisk | Where-Object {$_.DriveType -eq 3} | Select-Object -ExpandProperty FreeSpace
+                $free_disk_percentage = Get-WmiObject -Class Win32_LogicalDisk -Filter "DriveType=3" | Select-Object DeviceID, FreeSpace, Size
+
+                foreach ($drive in $free_disk_percentage) {
+
+                    $drivename = $drive.DeviceID
+                    $freeSpacePercent = [math]::Round(($drive.FreeSpace / $drive.Size) * 100, 2)
+    
+                    if (($freeSpacePercent -ge $disk_critical_threshold  ) -and ($freeSpacePercent -le $disk_warning_threshold)) { $DiskStatus = "WARNING" }
+                    elseif ($freeSpacePercent -lt $disk_critical_threshold) { $DiskStatus = "CRITICAL" }
+                    else{ $DiskStatus = "HEALTHY" }
+    
+                }
+            }
+            catch  {
+                 '(!) ' + $env:COMPUTERNAME + ' : Unable to capture disk usage data' | Write-Warning
+                 $free_disk_percentage = 'ERROR'
+                 $DiskStatus = 'ERROR'
+            }
+
+                
+            # - swap usage
+
+            try {
+                # "(*) Server: " + $env:COMPUTERNAME + " - Swap Usage"  | write-host
+                $swap_Allocated = Get-WmiObject -Class Win32_PageFileUsage | Select-Object -ExpandProperty AllocatedBaseSize
+                $swap_used = Get-WmiObject -Class Win32_PageFileUsage  | Select-Object -ExpandProperty CurrentUsage
+                $swap_percent = ($swap_used / $swap_Allocated) * 100
+                if (($swap_percent -gt $swap_warning_threshold) -and ($swap_percent -le $swap_critical_threshold)) { $SwapStatus = "WARNING" }
+                elseif ($swap_percent -ge $swap_critical_threshold) { $SwapStatus = "CRITICAL" } 
+                else { $SwapStatus = "HEALTHY" }
+            }
+            catch {
+                '(!) ' + $env:COMPUTERNAME + ' : Unable to capture swap usage data' | Write-Warning
+                $swap_percent = 'ERROR'
+                $SwapStatus = 'ERROR'
+            }
+
+            # - load average
+
+            try {
+                # "(*) Server: " + $env:COMPUTERNAME + " - Load Average"  | write-host
+                $load_average = Get-WmiObject -Class Win32_Processor | Measure-Object -Property LoadPercentage -Average | Select-Object -ExpandProperty Average
+                if (($load_average -gt $load_warning_threshold) -and ($load_averag -le $load_critical_threshold)) { $LoadStatus = "WARNING" }
+                elseif ($load_average -ge $load_critical_threshold) { $LoadStatus = "CRITICAL" } 
+                else { $LoadStatus = "HEALTHY" }
+            }
+            catch {
+                 '(!) ' + $env:COMPUTERNAME + ' : Unable to capture load average data' | Write-Warning
+                 $load_average = 'ERROR'
+                 $LoadStatus = 'ERROR'
+            }
+
+            $obj = New-Object PSObject -Property @{
+
+                # ServerName = $env:COMPUTERNAME
+                # PingStatus = $ping,$pingStatus
+                UpTimeHours = $uptime_hours,$UptimeStatus
+                CPUStatus = $cpuUsage,$cpuStatus
+                #CPUUsage = $cpuUsage
+                MemoryStatus = $Used_Physical_memory_Percent,$memoryStatus
+                #MemoryUsage = $memoryUsage
+                DiskStatus = $freeSpacePercent,$DiskStatus,$drivename
+                SwapStatus = $swap_percent,$SwapStatus
+                LoadAverage = $load_average,$LoadStatus
+            }
+            
+            return $Obj
+        } 
+        
+        if ($?) {
+            if ([boolean]$srvResult) { 
+                $srvResult | Add-Member -MemberType NoteProperty -Name PingStatus -Value $("$ping $pingStatus")
+                $results.Add( $srvResult ) | Out-Null
+            }
+        }
+        else { '(!) ' + $srv + ' : Unable to connect to remote server. Skipping' | Write-Warning  }
+
+    }
+
+    # - write output
+    $artifactFldr = "$DevOpsTempFolder\SRE"
+    $artifactPath = "$artifactFldr\WindowServersHealthcheckResults.csv"
+    if (-not (Test-Path $artifactFldr) ) {New-Item -Path $artifactFldr -ItemType Directory -Force | Out-Null}
+    if (test-path $artifactPath) { Remove-Item -Path $artifactPath -force }
+    $results | export-csv -Path $artifactPath -Force -NoTypeInformation -Append
+
+    # - add artifact
+    if (Test-Path $artifactPath) { New-OctopusArtifact $artifactPath 
+    $HTML = Import-Csv $artifactPath | ConvertTo-Html
+    
+# Define keyword-color mappings
+$colorMap = @{
+    "HEALTHY"  = "green"
+    "WARNING"  = "yellow"
+    "CRITICAL" = "red"
+}
+
+# Replace keywords with corresponding colors
+foreach ($keyword in $colorMap.Keys) {
+    $color = $colorMap[$keyword]
+    $HTML = $HTML -replace "(?i)$keyword", "<span style='color: $color'>$keyword</span>"
+}
+
+
+Send-EMail -fromaddress 'xyz@gmail.com;' -subject 'LDQA Windows Server HealthCheck' -htmlContent $HTML
+    }    
+
+}
+else { '(!) Server list is null. No action taken' | Write-Warning}
+
