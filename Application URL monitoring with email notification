@@ -1,4 +1,4 @@
-$HTMLOUTPUT = "C:\testkv\Website_Monitoring\Websitemon.html"
+$HTMLOUTPUT = "C:\test\Website_Monitoring\Websitemon.html"
 
 # $ServerList = "C:\SysEng_Automation\servname.txt"
 
@@ -8,10 +8,10 @@ $timezone = "EST"
 $date1 = Get-Date
 $date = ( get-date ).ToString('MM/dd/yyyy')
 $EmailSubject = "API END POINT MONITORING - " + $date1 
-$SMTPServer = "vtxppsmtpprd.lpl.net"
+$SMTPServer = "google.com"
 
-# $apiuser = "Kerry.bubb"    
-# $apipwd = "Jan@2020"
+# $apiuser = "abc@123"    
+# $apipwd = "abc@12"
 
 
 
