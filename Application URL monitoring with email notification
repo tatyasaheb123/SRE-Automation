@@ -1,0 +1,192 @@
+$HTMLOUTPUT = "C:\testkv\Website_Monitoring\Websitemon.html"
+
+# $ServerList = "C:\SysEng_Automation\servname.txt"
+
+$EmailTo = "xyz@gmail.com"
+$EmailFrom = "syseng@lplfinancial.com"
+$timezone = "EST"
+$date1 = Get-Date
+$date = ( get-date ).ToString('MM/dd/yyyy')
+$EmailSubject = "API END POINT MONITORING - " + $date1 
+$SMTPServer = "vtxppsmtpprd.lpl.net"
+
+# $apiuser = "Kerry.bubb"    
+# $apipwd = "Jan@2020"
+
+
+
+
+$URLListFile = "C:\testkv\Website_Monitoring\Website_Monitoring.txt"
+#Reading the list of URLs from the URLList.txt file 
+$URLList = Get-Content $URLListFile -ErrorAction SilentlyContinue
+#Declaring Array
+$Result = @()
+$HTMLOUTPUT = "<HTML>
+<BODY background-color:grey><font color =""black"">
+<table width='75%' align=`"center`">
+<tr bgcolor='#33CAFF'>
+<td colspan='7' height='25' align='center'>
+<font face='Cambria' color='#003399' size='4'><strong>$EmailSubject</strong></font>
+</td>
+</tr>
+</table>
+<table width='50%' align=`"center`">
+<tr bgcolor='#4CFF33'>
+<td colspan='5' height='20' align='center'>
+<font face='Cambria' color='#003399' size='4'><strong>Green Is Good</strong></font>
+</td>
+<tr bgcolor='#C70039'>
+<td colspan='5' height='20' align='center'>
+<font face='Cambria' color='#003399' size='4'><strong>Red is alert</strong></font>
+</td>
+</tr>
+</table>
+
+<H3 align=center> <u> SYSTEMS ENGINEERING - API END POINT MONITORING HEALTHCHECK </u> </H3>
+</font><Table border=1 cellpadding=0 cellspacing=0 align=center><TR bgcolor=gray align=center><TD><B>URL</B>
+</TD><TD><B>StatusCode</B>
+</TD><TD><B>Status Description</B>
+</TD><TD><B>Response Time</B>"
+
+# Write the HTML Header to the file
+$date1 = ( get-date ).ToString('MM/dd/yyyy')
+<#Add-Content $FormatGeneeratr "<html>"
+Add-Content $FormatGeneeratr "<head>"
+Add-Content $FormatGeneeratr "<meta http-equiv='Content-Type' content='text/html; charset=iso-8859-1'>"
+Add-Content $FormatGeneeratr '<title>Server Drive Space Report</title>'
+Add-Content $FormatGeneeratr '<STYLE TYPE="text/css">'
+Add-Content $FormatGeneeratr "td {"
+Add-Content $FormatGeneeratr "font-family: Cambria;"
+Add-Content $FormatGeneeratr "font-size: 11px;"
+Add-Content $FormatGeneeratr "border-top: 1px solid #999999;"
+Add-Content $FormatGeneeratr "border-right: 1px solid #999999;"
+Add-Content $FormatGeneeratr "border-bottom: 1px solid #999999;"
+Add-Content $FormatGeneeratr "border-left: 1px solid #999999;"
+Add-Content $FormatGeneeratr "padding-top: 0px;"
+Add-Content $FormatGeneeratr "padding-right: 0px;"
+Add-Content $FormatGeneeratr "padding-bottom: 0px;"
+Add-Content $FormatGeneeratr "padding-left: 0px;"
+Add-Content $FormatGeneeratr "}"
+Add-Content $FormatGeneeratr "body {"
+Add-Content $FormatGeneeratr "margin-left: 5px;"
+Add-Content $FormatGeneeratr "margin-top: 5px;"
+Add-Content $FormatGeneeratr "margin-right: 0px;"
+Add-Content $FormatGeneeratr "margin-bottom: 10px;"
+Add-Content $FormatGeneeratr "table {"
+Add-Content $FormatGeneeratr "border: thin solid #000000;"
+Add-Content $FormatGeneeratr "}"
+Add-Content $FormatGeneeratr "</style>"
+Add-Content $FormatGeneeratr "</head>"
+Add-Content $FormatGeneeratr "<body>"
+Add-Content $FormatGeneeratr "<table width='75%' align=`"center`">"
+Add-Content $FormatGeneeratr "<tr bgcolor='#CCCCCC'>"
+Add-Content $FormatGeneeratr "<td colspan='7' height='25' align='center'>"
+Add-Content $FormatGeneeratr "<font face='Cambria' color='#003399' size='4'><strong>$EmailSubject</strong></font>"
+Add-Content $FormatGeneeratr "</td>"
+Add-Content $FormatGeneeratr "</tr>"
+Add-Content $FormatGeneeratr "</table>"
+
+# Add color descriptions here
+Add-content $FormatGeneeratr "<table width='50%' align=`"center`">"  
+Add-Content $FormatGeneeratr "<tr>"  
+Add-Content $FormatGeneeratr "<td width='10%' bgcolor='#4CBB17' align='center'><B>Good = </B></td>"  
+Add-Content $FormatGeneeratr "<td width='10%' bgcolor='#FBB917' align='center'><B>Warning = </B></td>"  
+Add-Content $FormatGeneeratr "<td width='10%' bgcolor='#FF0000' align='center'><B>Critical = </B></td>"  
+Add-Content $FormatGeneeratr "</tr>"  
+Add-Content $FormatGeneeratr "</table>" #>
+
+################################################
+# Adding certificate exception to prevent API errors
+################################################
+add-type @"
+    using System.Net;
+    using System.Security.Cryptography.X509Certificates;
+    public class TrustAllCertsPolicy : ICertificatePolicy {
+        public bool CheckValidationResult(
+            ServicePoint srvPoint, X509Certificate certificate,
+            WebRequest request, int certificateProblem) {
+            return true;
+        }
+    }
+"@
+# [System.Net.ServicePointManager]::CertificatePolicy = New-Object TrustAllCertsPolicy
+   
+Foreach($URL in $URLList) 
+{ 
+  $time = try{ 
+      $request = $null 
+      #Measure-Command : Measures the time it takes to run script blocks and cmdlets.
+      <#$Credentials = Get-Credential -Credential $null
+      $apiuser = $Credentials.UserName
+      $Credentials.Password | ConvertFrom-SecureString
+      $apipwd = $Credentials.GetNetworkCredential().password#>
+      $response = Measure-Command { $request = Invoke-WebRequest -Uri $URL } 
+      $response1 = Measure-Command { $request = Invoke-WebRequest -Uri $URL }
+
+     # $HTTP_Request = [System.Net.WebRequest]::Create('https://clientworksdevint.lpl.com/shellrest/api/auth/navmenu')
+
+      # $HTTP_Response = $HTTP_Request.GetResponse()
+
+     # $jsonresults = $response.Content | ConvertTo-Json
+      # $msresponse = $response.Milliseconds 
+      
+  }  
+  catch 
+  { 
+   $request = $_.Exception.Response 
+   $time = -1 
+  }   
+  $result += [PSCustomObject] @{ 
+  Time = Get-Date; 
+  Uri = $URL; 
+  StatusCode = [int] $request.StatusCode; 
+  StatusDescription = [string] $request.StatusDescription; 
+  #StatusMessages = [char] $request.Method;
+  Milliseconds = [int] $response1.Milliseconds;
+  } 
+} 
+
+
+ 
+if($result -ne $null) 
+{  
+    Foreach($Entry in $Result) 
+    { 
+        if($Entry.StatusCode -ne "200" -OR $Entry.StatusDescription -ne "OK" -OR $Entry.Milliseconds -ge "900") 
+        { 
+            $HTMLOUTPUT += "<TR bgcolor=red>" 
+        } 
+        else 
+        { 
+            $HTMLOUTPUT += "<TR bgcolor=lightgreen>" 
+        } 
+        $HTMLOUTPUT += "<TD>$($Entry.uri)</TD><TD align=center>$($Entry.StatusCode)</TD><TD align=center>$($Entry.StatusDescription)</TD><TD align=center>$($Entry.Milliseconds)</TD></TR>" 
+    } 
+    $HTMLOUTPUT += "</Table></BODY></HTML>" 
+
+    }  
+
+
+$HTMLOUTPUT | out-file C:\testkv\Website_Monitoring\Websitemon.xls
+$HTMLOUTPUT | out-file C:\testkv\Website_Monitoring\Websitemon.html
+$Detail | out-file C:\testkv\Website_Monitoring\detail1.html
+$jsonresults | out-file C:\testkv\Website_Monitoring\detail1.txt
+
+
+$BodyReport = Get-Content "C:\testkv\Website_Monitoring\Websitemon.html" -Raw
+
+Foreach($Entry in $Result) 
+    { 
+        if($Entry.StatusCode -ne "200" -OR $Entry.StatusDescription -ne "OK" -OR $Entry.Milliseconds -ge "900") 
+        {
+
+
+Send-MailMessage	-To		           $EmailTo `
+                    -Cc                "abc@gmail.com" `
+		 	        -Subject 	       $EmailSubject `
+			        -From 		       $EmailFrom `
+			        -SmtpServer 	   $SMTPServer `
+			        -BodyAsHtml	-Body  $BodyReport
+
+}
+}
