@@ -1,0 +1,131 @@
+#!/bin/bash
+
+# Set warning and critical thresholds
+
+warning_response_time=500
+critical_response_time=1000
+warning_cpu=90
+critical_cpu=95
+warning_totalmemory=90
+critical_totalmemory=95
+warning_load=3
+critical_load=5
+warning_disk=90
+critical_disk=95
+warning_inode=90
+critical_inode=95
+warning_fsusage=90
+critical_fsusage=95
+
+EMAIL=xyz@gmail.com
+OUTPUT=/tmp/server_monitoring_test_`date +%m%d%Y-%H%M`.log
+
+# Check response time and status
+response_time=$(ping -c 4 localhost | awk -F"/" 'END{printf "%.2f", $5}')
+if [ $(echo "$response_time > $critical_response_time" | bc -l) -eq 1 ]; then
+  echo "Server Response Time Is Greater Then CRITICAL Threashold, Current Response Time is ${response_time}" >> $OUTPUT
+elif [ $(echo "$response_time > $warning_response_time" | bc -l) -eq 1 ]; then
+  echo "Server Response Time Is Greater Then WARNING Threashold, Current Response Time is ${response_time}" >> $OUTPUT
+  else
+  response_status="HEALTHY"
+fi
+
+# Check CPU usage and status
+cpu_usage=$(top -bn1 | grep "Cpu(s)" | awk '{print $2 + $4}')
+if [ $(echo "$cpu_usage > $critical_cpu" | bc -l) -eq 1 ]; then
+  echo "High CPU Utilzation Alert, more then CRITICAL    ${cpu_usage}% of CPUs being utilized" >> $OUTPUT
+elif [ $(echo "$cpu_usage > $warning_cpu" | bc -l) -eq 1 ]; then
+  echo "High CPU Utilzation Alert, more then WARNING threashold: ${cpu_usage}% of CPUs being utilized" >> $OUTPUT
+else
+  cpu_status="HEALTHY"
+fi
+
+# Check totalmemory usage and status
+totalmemory_usage=$(free -tm| awk '/Total/{printf("%.2f%"), $3/$2*100}')
+if [ $(echo "$totalmemory_usage > $critical_totalmemory" | bc -l) -eq 1 ]; then
+  echo "Servers totalmemory Usage Is Greater Then CRITICAL Threashold, Current totalmemory Usage is ${totalmemory_usage}" >> $OUTPUT
+elif [ $(echo "$totalmemory_usage > $warning_totalmemory" | bc -l) -eq 1 ]; then
+  echo "Servers totalmemory Usage Is Greater Then WARNING Threashold, Current totalmemory Usage is ${totalmemory_usage}" >> $OUTPUT
+else
+  totalmemory_status="HEALTHY"
+fi
+
+# Check load average and status
+load_average=$(cat /proc/loadavg | awk '{print $1}')
+if [ $(echo "$load_average > $critical_load" | bc -l) -eq 1 ]; then
+echo "Servers Load Average Is Greater Then CRITICAL Threashold, Current Load Average is ${load_average}" >> $OUTPUT
+elif [ $(echo "$load_average > $warning_load" | bc -l) -eq 1 ]; then
+  echo "Servers Load Average Is Greater Then WARNING Threashold, Current Load Average is ${load_average}" >> $OUTPUT
+else
+  load_status="HEALTHY"
+fi
+
+# Check disk usage and status
+disk_usage=$(df -h | awk '$NF=="/"{printf "%s\n", $5}' | sed 's/%//g')
+if [ $(echo "$disk_usage > $critical_disk" | bc -l) -eq 1 ]; then
+  echo "Servers Disk Usage Is Greater Then CRITICAL Threashold, Current Disk Usage is ${disk_usage}" >> $OUTPUT
+elif [ $(echo "$disk_usage > $warning_disk" | bc -l) -eq 1 ]; then
+  echo "Servers Disk Usage Is Greater Then WARNING Threashold, Current Disk Usage is ${disk_usage}" >> $OUTPUT
+else
+  disk_status="HEALTHY"
+fi
+
+# Check /home usage and status
+home_usage=$(df -h | awk '$NF=="/home"{printf "%s\n", $5}' | sed 's/%//g')
+if [ $(echo "$home_usage > $critical_disk" | bc -l) -eq 1 ]; then
+  echo "Servers /home Usage Is Greater Then CRITICAL Threashold, Current /home Usage is ${home_usage}" >> $OUTPUT
+elif [ $(echo "$home_usage > $warning_disk" | bc -l) -eq 1 ]; then
+  echo "Servers /home Usage Is Greater Then WARNING Threashold, Current /home Usage is ${home_usage}" >> $OUTPUT
+else
+  home_status="HEALTHY"
+fi
+
+# Check /opt usage and status
+opt_usage=$(df -h | awk '$NF=="/opt"{printf "%s\n", $5}' | sed 's/%//g')
+if [ $(echo "$opt_usage > $critical_disk" | bc -l) -eq 1 ]; then
+  echo "Servers /opt Usage Is Greater Then CRITICAL Threashold, Current /opt Usage is ${opt_usage}" >> $OUTPUT
+elif [ $(echo "$opt_usage > $warning_disk" | bc -l) -eq 1 ]; then
+  echo "Servers /opt Usage Is Greater Then WARNING Threashold, Current /opt Usage is ${opt_usage}" >> $OUTPUT
+else
+  opt_status="HEALTHY"
+fi
+
+# Check /tmp usage and status
+tmp_usage=$(df -h | awk '$NF=="/tmp"{printf "%s\n", $5}' | sed 's/%//g')
+if [ $(echo "$tmp_usage > $critical_disk" | bc -l) -eq 1 ]; then
+  echo "Servers /tmp Usage Is Greater Then CRITICAL Threashold, Current /tmp Usage is ${tmp_usage}" >> $OUTPUT
+elif [ $(echo "$tmp_usage > $warning_disk" | bc -l) -eq 1 ]; then
+  echo "Servers /tmp Usage Is Greater Then WARNING Threashold, Current /tmp Usage is ${tmp_usage}" >> $OUTPUT
+else
+  tmp_status="HEALTHY"
+fi
+
+# Check /var usage and status
+var_usage=$(df -h | awk '$NF=="/var"{printf "%s\n", $5}' | sed 's/%//g')
+if [ $(echo "$var_usage > $critical_disk" | bc -l) -eq 1 ]; then
+  echo "Servers /Var Usage Is Greater Then CRITICAL Threashold, Current /Var Usage is ${var_usage}" >> $OUTPUT
+elif [ $(echo "$var_usage > $warning_disk" | bc -l) -eq 1 ]; then
+  echo "Servers /Var Usage Is Greater Then WARNING Threashold, Current /Var Usage is ${var_usage}" >> $OUTPUT
+else
+  var_status="HEALTHY"
+fi
+
+
+# Check inode usage and status
+inode_usage=$(df -i | awk '$NF=="/"{printf "%s\n", $5}' | sed 's/%//g')
+if [ $(echo "$inode_usage > $critical_inode" | bc -l) -eq 1 ]; then
+  echo "Servers INODE Usage Is Greater Then CRITICAL Threashold, Current INODE Usage is ${inode_usage}" >> $OUTPUT
+elif [ $(echo "$inode_usage > $warning_inode" | bc -l) -eq 1 ]; then
+  echo "Servers INODE Usage Is Greater Then WARNING Threashold, Current INODE Usage is ${inode_usage}"  >> $OUTPUT
+else
+  inode_status="HEALTHY"
+fi
+
+
+if ls -l $OUTPUT >/dev/null 2>&1
+then
+echo "" >> $OUTPUT
+echo "Please check the above alert/s and take appropriate action." >> $OUTPUT
+cat $OUTPUT | mail -s "Monitoring Alert on server `hostname`!!" $EMAIL
+fi
+
