@@ -129,3 +129,8 @@ echo "Please check the above alert/s and take appropriate action." >> $OUTPUT
 cat $OUTPUT | mail -s "Monitoring Alert on server `hostname`!!" $EMAIL
 fi
 
+
+Delete Output log file script-->
+
+cd /tmp
+rm -f -r server_monitoring*.log
